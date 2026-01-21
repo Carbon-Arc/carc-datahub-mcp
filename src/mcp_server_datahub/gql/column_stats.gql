@@ -1,0 +1,33 @@
+query GetColumnStatistics($urn: String!, $startTimeMillis: Long, $endTimeMillis: Long, $limit: Int) {
+  dataset(urn: $urn) {
+    urn
+    name
+    properties {
+      name
+      qualifiedName
+    }
+    datasetProfiles(
+      startTimeMillis: $startTimeMillis
+      endTimeMillis: $endTimeMillis
+      limit: $limit
+    ) {
+      timestampMillis
+      rowCount
+      columnCount
+      sizeInBytes
+      fieldProfiles {
+        fieldPath
+        nullCount
+        nullProportion
+        uniqueCount
+        uniqueProportion
+        min
+        max
+        mean
+        median
+        stdev
+        sampleValues
+      }
+    }
+  }
+}

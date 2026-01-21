@@ -538,6 +538,7 @@ entity_details_fragment_gql = (
 
 queries_gql = (pathlib.Path(__file__).parent / "gql/queries.gql").read_text()
 query_entity_gql = (pathlib.Path(__file__).parent / "gql/query_entity.gql").read_text()
+column_stats_gql = (pathlib.Path(__file__).parent / "gql/column_stats.gql").read_text()
 
 
 def _is_semantic_search_enabled() -> bool:
@@ -1753,6 +1754,185 @@ def _deduplicate_subjects(subjects: list[dict]) -> list[str]:
     return list(updated_subjects)
 
 
+def _parse_time_to_millis(time_value: Optional[str]) -> Optional[int]:
+    """Parse a time value to Unix milliseconds.
+
+    Accepts either:
+    - Unix milliseconds as a string (e.g., "1704067200000")
+    - ISO8601 datetime string (e.g., "2024-01-01T00:00:00Z")
+
+    Returns None if time_value is None.
+    """
+    if time_value is None:
+        return None
+
+    # Try parsing as integer (Unix milliseconds)
+    try:
+        return int(time_value)
+    except ValueError:
+        pass
+
+    # Try parsing as ISO8601 datetime
+    from datetime import datetime, timezone
+
+    try:
+        # Handle both with and without timezone
+        if time_value.endswith("Z"):
+            dt = datetime.fromisoformat(time_value.replace("Z", "+00:00"))
+        else:
+            dt = datetime.fromisoformat(time_value)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp() * 1000)
+    except ValueError as e:
+        raise ValueError(
+            f"Invalid time format: {time_value}. Expected Unix milliseconds or ISO8601 datetime."
+        ) from e
+
+
+def get_column_statistics(
+    urn: str,
+    column: Optional[str] = None,
+    limit: int = 1,
+    start_time: Optional[str] = None,
+    end_time: Optional[str] = None,
+) -> dict:
+    """Get column-level statistics (min, max, null count, etc.) for a dataset.
+
+    Retrieves profiling data from DataHub's datasetProfile aspect, which contains
+    column-level statistics collected during data profiling/ingestion.
+
+    PARAMETERS:
+
+    urn - Dataset URN to retrieve statistics for
+        Example: "urn:li:dataset:(urn:li:dataPlatform:snowflake,db.schema.table,PROD)"
+
+    column - Optional column name to filter results (case-sensitive field path)
+        If specified, only returns statistics for the matching column(s)
+
+    limit - Number of profile snapshots to return (default: 1)
+        Returns most recent profiles first. Use higher values to see historical trends.
+
+    start_time - Optional start time filter
+        Accepts Unix milliseconds (e.g., "1704067200000") or ISO8601 (e.g., "2024-01-01T00:00:00Z")
+
+    end_time - Optional end time filter
+        Same format as start_time
+
+    RESPONSE STRUCTURE:
+
+    - datasetUrn: The dataset URN
+    - datasetName: Human-readable dataset name
+    - profileCount: Number of profile snapshots returned
+    - profiles: Array of profile snapshots, each containing:
+      - timestampMillis: When the profile was captured
+      - rowCount: Total rows in the dataset at profile time
+      - columnCount: Total columns in the dataset
+      - sizeInBytes: Dataset size at profile time
+      - fieldProfiles: Array of column statistics:
+        - fieldPath: Column identifier
+        - min: Minimum value (as string)
+        - max: Maximum value (as string)
+        - mean: Average value (numeric columns)
+        - median: Median value (numeric columns)
+        - stdev: Standard deviation (numeric columns)
+        - nullCount: Number of null values
+        - nullProportion: Fraction of null values (0-1)
+        - uniqueCount: Number of distinct values
+        - uniqueProportion: Fraction of unique values (0-1)
+        - sampleValues: Example values from the column
+
+    EXAMPLES:
+
+    - Get latest column statistics:
+      get_column_statistics(urn="urn:li:dataset:(urn:li:dataPlatform:snowflake,db.schema.orders,PROD)")
+
+    - Get statistics for a specific column:
+      get_column_statistics(
+          urn="urn:li:dataset:(...)",
+          column="customer_id"
+      )
+
+    - Get historical profiles (last 5 snapshots):
+      get_column_statistics(urn="urn:li:dataset:(...)", limit=5)
+
+    - Get profiles within a time range:
+      get_column_statistics(
+          urn="urn:li:dataset:(...)",
+          start_time="2024-01-01T00:00:00Z",
+          end_time="2024-01-31T23:59:59Z"
+      )
+
+    NOTE: Column statistics are only available if profiling was enabled during ingestion.
+    If no profiles exist, the response will have profileCount=0 and an empty profiles array.
+    """
+    client = get_datahub_client()
+
+    # Parse time parameters
+    start_millis = _parse_time_to_millis(start_time)
+    end_millis = _parse_time_to_millis(end_time)
+
+    # Build variables for GraphQL query
+    variables: Dict[str, Any] = {
+        "urn": urn,
+        "limit": limit,
+    }
+    if start_millis is not None:
+        variables["startTimeMillis"] = start_millis
+    if end_millis is not None:
+        variables["endTimeMillis"] = end_millis
+
+    # Execute the GraphQL query
+    result = _execute_graphql(
+        client._graph,
+        query=column_stats_gql,
+        variables=variables,
+        operation_name="GetColumnStatistics",
+    )
+
+    dataset = result.get("dataset")
+    if dataset is None:
+        return {
+            "datasetUrn": urn,
+            "datasetName": None,
+            "profileCount": 0,
+            "profiles": [],
+            "message": f"Dataset not found: {urn}",
+        }
+
+    profiles = dataset.get("datasetProfiles") or []
+
+    # Filter by column if specified
+    if column is not None:
+        for profile in profiles:
+            field_profiles = profile.get("fieldProfiles") or []
+            profile["fieldProfiles"] = [
+                fp for fp in field_profiles if fp.get("fieldPath") == column
+            ]
+
+    # Build response
+    dataset_name = None
+    if props := dataset.get("properties"):
+        dataset_name = props.get("qualifiedName") or props.get("name")
+    if not dataset_name:
+        dataset_name = dataset.get("name")
+
+    response = {
+        "datasetUrn": dataset.get("urn"),
+        "datasetName": dataset_name,
+        "profileCount": len(profiles),
+        "profiles": profiles,
+    }
+
+    if len(profiles) == 0:
+        response["message"] = (
+            "No profiling data found. Column statistics require profiling to be "
+            "enabled during data ingestion."
+        )
+
+    return clean_gql_response(response)
+
+
 class AssetLineageDirective(BaseModel):
     urn: str
     upstream: bool
@@ -2540,6 +2720,11 @@ def register_all_tools(is_oss: bool = False) -> None:
     # Register get_dataset_queries tool
     mcp.tool(name="get_dataset_queries", description=get_dataset_queries.__doc__)(
         async_background(get_dataset_queries)
+    )
+
+    # Register get_column_statistics tool
+    mcp.tool(name="get_column_statistics", description=get_column_statistics.__doc__)(
+        async_background(get_column_statistics)
     )
 
     # Register get_entities tool
