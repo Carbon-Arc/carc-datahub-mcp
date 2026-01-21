@@ -45,7 +45,9 @@ def main(transport: Literal["stdio", "sse", "http"], debug: bool) -> None:
 
     with with_datahub_client(client):
         if transport == "http":
-            mcp.run(transport=transport, show_banner=False, stateless_http=True)
+            mcp.run(transport=transport, host="0.0.0.0", show_banner=False, stateless_http=True)
+        elif transport == "sse":
+            mcp.run(transport=transport, host="0.0.0.0", show_banner=False)
         else:
             mcp.run(transport=transport, show_banner=False)
 
