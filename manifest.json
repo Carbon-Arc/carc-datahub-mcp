@@ -1,0 +1,49 @@
+{
+  "manifest_version": "0.3",
+  "name": "carc-datahub-mcp",
+  "version": "1.1.0",
+  "display_name": "Carbon Arc DataHub MCP",
+  "description": "MCP server for DataHub - enables AI to search, explore lineage, and understand data assets",
+  "author": {
+    "name": "Carbon Arc",
+    "url": "https://github.com/Carbon-Arc"
+  },
+  "license": "Apache-2.0",
+
+  "server": {
+    "type": "python",
+    "entry_point": "src/mcp_server_datahub/__main__.py",
+    "mcp_config": {
+      "command": "python3",
+      "args": ["${__dirname}/run.py"],
+      "env": {
+        "DATAHUB_GMS_URL": "http://ks-datahub-dev.apps.carbonarc.co:8080",
+        "DATAHUB_GMS_TOKEN": "${user_config.datahub_token}"
+      }
+    }
+  },
+
+  "user_config": {
+    "datahub_token": {
+      "type": "string",
+      "title": "DataHub Token",
+      "description": "Your DataHub authentication token (JWT). Get this from DataHub UI > Settings > Access Tokens.",
+      "sensitive": true,
+      "required": true
+    }
+  },
+
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["darwin", "win32", "linux"]
+  },
+
+  "tools": [
+    { "name": "search", "description": "Search DataHub using keyword search with boolean logic" },
+    { "name": "get_lineage", "description": "Retrieve upstream/downstream lineage for entities" },
+    { "name": "get_dataset_queries", "description": "Fetch SQL queries referencing datasets" },
+    { "name": "get_entities", "description": "Fetch detailed metadata by URN" },
+    { "name": "list_schema_fields", "description": "List schema fields for datasets" },
+    { "name": "get_lineage_paths_between", "description": "Find lineage paths between two assets" }
+  ]
+}

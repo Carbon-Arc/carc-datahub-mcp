@@ -62,6 +62,38 @@ The test suite is currently very simplistic, and requires a live DataHub instanc
 make test
 ```
 
+## Building the MCPB Bundle
+
+The `.mcpb` file is a zip archive that can be installed in Claude Desktop as an extension.
+
+### Prerequisites
+
+- Ensure `uv.lock` exists and is up to date (`uv lock` if needed)
+- Update the version in `manifest.json` if releasing a new version
+
+### Build Steps
+
+```bash
+# 1. Get the version from manifest.json
+VERSION=$(python3 -c "import json; print(json.load(open('manifest.json'))['version'])")
+
+# 2. Create the bundle (zip with .mcpb extension)
+zip -r "carc-datahub-mcp-v${VERSION}.mcpb" . -x@.mcpbignore
+
+# 3. Verify the bundle contains uv.lock (required for fast startup)
+unzip -l "carc-datahub-mcp-v${VERSION}.mcpb" | grep uv.lock
+```
+
+### Important Notes
+
+- **Always include `uv.lock`** in the bundle. Without it, `uv run` must resolve all dependencies on first launch, causing a timeout/disconnect in Claude Desktop.
+- The `.mcpbignore` file controls what's excluded from the bundle (similar to `.gitignore`)
+- Test the bundle by installing it in Claude Desktop before distributing
+
+### Installing in Claude Desktop
+
+Double-click the `.mcpb` file or drag it into Claude Desktop to install.
+
 ## Publishing
 
 We use setuptools-scm to manage the version number.

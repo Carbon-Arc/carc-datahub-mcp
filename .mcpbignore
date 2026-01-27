@@ -1,0 +1,49 @@
+# Virtual environment
+.venv/*
+venv/*
+env/*
+
+# Cache directories
+.mypy_cache/*
+__pycache__/*
+*.pyc
+.pytest_cache/*
+.ruff_cache/*
+
+# Build artifacts
+*.egg-info/*
+dist/*
+build/*
+
+# Development files
+.git/*
+.github/*
+tests/*
+scripts/*
+# Note: DO NOT exclude uv.lock - it's needed for fast dependency resolution
+
+# IDE and editor files
+.idea/*
+.vscode/*
+*.swp
+*.swo
+
+# Environment and secrets
+.env
+.env.*
+.envrc
+
+# Documentation (keep README)
+DEVELOPING.md
+CHANGELOG.md
+
+# Docker
+Dockerfile
+
+# Other
+Makefile
+.python-version
+.claude/*
+
+# Bundle files (don't include old bundles in new ones)
+*.mcpb
