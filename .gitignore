@@ -17,3 +17,6 @@ src/mcp_server_datahub/_version.py
 
 # Environments
 .env
+
+# MCPB bundles (build artifacts)
+*.mcpb
