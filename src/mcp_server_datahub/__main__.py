@@ -8,7 +8,9 @@ from fastmcp.server.middleware.logging import LoggingMiddleware
 from typing_extensions import Literal
 
 from mcp_server_datahub._telemetry import TelemetryMiddleware
-from mcp_server_datahub._version import __version__
+from importlib.metadata import version
+
+__version__ = version("mcp-server-datahub")
 from mcp_server_datahub.mcp_server import mcp, register_all_tools, with_datahub_client
 
 logging.basicConfig(level=logging.INFO)
@@ -45,7 +47,12 @@ def main(transport: Literal["stdio", "sse", "http"], debug: bool) -> None:
 
     with with_datahub_client(client):
         if transport == "http":
-            mcp.run(transport=transport, host="0.0.0.0", show_banner=False, stateless_http=True)
+            mcp.run(
+                transport=transport,
+                host="0.0.0.0",
+                show_banner=False,
+                stateless_http=True,
+            )
         elif transport == "sse":
             mcp.run(transport=transport, host="0.0.0.0", show_banner=False)
         else:

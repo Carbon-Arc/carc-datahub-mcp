@@ -5,7 +5,9 @@ from datahub.telemetry import telemetry
 from datahub.utilities.perf_timer import PerfTimer
 from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
 
-from mcp_server_datahub._version import __version__
+from importlib.metadata import version
+
+__version__ = version("mcp-server-datahub")
 
 telemetry.telemetry_instance.add_global_property(
     "mcp_server_datahub_version", __version__
