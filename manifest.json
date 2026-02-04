@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.3",
   "name": "carc-datahub-mcp",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "display_name": "Carbon Arc DataHub MCP",
   "description": "MCP server for DataHub - enables AI to search, explore lineage, and understand data assets",
   "author": {
