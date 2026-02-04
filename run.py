@@ -33,9 +33,10 @@ def setup_environment():
     )
 
     # Use uv sync to create venv and install deps from uv.lock (fast!)
+    # Constrain Python version to avoid 3.14+ which lacks pre-built wheels for many packages
     print("Installing dependencies with uv...", file=sys.stderr)
     subprocess.run(
-        [sys.executable, "-m", "uv", "sync", "--directory", str(SCRIPT_DIR)],
+        [sys.executable, "-m", "uv", "sync", "--python", ">=3.10,<3.14", "--directory", str(SCRIPT_DIR)],
         check=True,
     )
 

@@ -5,6 +5,21 @@ All notable changes to mcp-server-datahub will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-02-04
+
+### Fixed
+
+- **Python 3.14 compatibility**: Added `--python ">=3.10,<3.14"` constraint to `uv sync` in run.py
+  - Users with Python 3.14 no longer need Xcode Command Line Tools
+  - `uv` will automatically download a compatible Python version (3.13) if needed
+- Updated `requires-python` to `">=3.10,<3.14"` in pyproject.toml
+
+### Why
+
+Python 3.14 lacks pre-built wheels for critical dependencies (`cffi`, `pydantic-core`), and PyO3 does not yet support Python 3.14. This caused installation failures requiring users to install Xcode CLT or manually switch Python versions.
+
+---
+
 ## [0.4.0] - 2025-11-17
 
 ### Added
